@@ -12,21 +12,21 @@ please understand the objectives and limitations of this fork:
 - you are using the gnirehtet app compiled from the fork
 
 
-This is a specific fork of the gnirehtet app that allows you to do extra routing on packets leaving the android device(s).
-Since the gnirehtet android app is intruducion itself as a VPN service, you are not allowed to use another VPN service, leaving you with the same network the host machine is using.
-This build marks every TCP/UDP socket with a FWMARK so you can manipulate the routing on the host machine.
-The FWMARK is determined by the Serial of the Android device in use.
-In order to calculate the FWMARK from the serial number I'm using a simple function that takes the byte array and sums itself and adds it to 10000.
-It's not the best idea, but I have 16 devices running alongside with no collision. I know I can do better, but I'm not disturbed at the moment. 
-If you think you can make it better, please do.
-so if your Serial Number is **R56RA14GFBV**, here is how you can get the FWMARK in javascript:
+This is a specific fork of the gnirehtet app that allows you to do extra routing on packets leaving the android device(s).  
+Since the gnirehtet android app is intruducion itself as a VPN service, you are not allowed to use another VPN service, leaving you with the same network the host machine is using.  
+This build marks every TCP/UDP socket with a FWMARK so you can manipulate the routing on the host machine.  
+The FWMARK is determined by the Serial of the Android device in use.  
+In order to calculate the FWMARK from the serial number I'm using a simple function that takes the byte array and sums itself and adds it to 10000.  
+It's not the best idea, but I have 16 devices running alongside with no collision. I know I can do better, but I'm not disturbed at the moment.  
+If you think you can make it better, please do.  
+so if your Serial Number is **R56RA14GFBV**, here is how you can get the FWMARK in javascript:  
 
-`new TextEncoder().encode('R56RA14GFBV').reduce((partialSum, a) => partialSum + a, 0) + 10000`
-this thing equals to **10730**
+`new TextEncoder().encode('R56RA14GFBV').reduce((partialSum, a) => partialSum + a, 0) + 10000`  
+this thing equals to **10730**  
 
-now when you run the relay-rust application every socket will mark it self with FWMARK=10730,
-so you can setup a ip rule to forward all packets with FWMARK of 10730 to a table which has a wg interface as it's gateway,
-and setup a POSTROUTING action to change the source address to the wg address you've set up in the configuration.
+now when you run the relay-rust application every socket will mark it self with FWMARK=10730,  
+so you can setup a ip rule to forward all packets with FWMARK of 10730 to a table which has a wg interface as it's gateway,  
+and setup a POSTROUTING action to change the source address to the wg address you've set up in the configuration.  
 
 
 
