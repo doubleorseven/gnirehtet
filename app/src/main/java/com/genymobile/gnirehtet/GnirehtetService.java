@@ -52,6 +52,7 @@ public class GnirehtetService extends VpnService {
 
     private ParcelFileDescriptor vpnInterface = null;
     private Forwarder forwarder;
+    public String serial = "";
 
     public static void start(Context context, VpnConfiguration config) {
         Intent intent = new Intent(context, GnirehtetService.class);
@@ -81,13 +82,15 @@ public class GnirehtetService extends VpnService {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent.getAction();
-        Log.d(TAG, "Received request " + action);
+        Log.i(TAG, "Received request " + action);
         if (ACTION_START_VPN.equals(action)) {
             if (isRunning()) {
                 Log.d(TAG, "VPN already running, ignore START request");
             } else {
                 VpnConfiguration config = intent.getParcelableExtra(EXTRA_VPN_CONFIGURATION);
+                Log.d(TAG, "1111111111: " + config.getDnsServers() + " SE: " + config.getSerial());
                 if (config == null) {
+                    Log.i(TAG, "new config");
                     config = new VpnConfiguration();
                 }
                 startVpn(config);
@@ -103,6 +106,7 @@ public class GnirehtetService extends VpnService {
     }
 
     private void startVpn(VpnConfiguration config) {
+
         notifier.start();
         if (setupVpn(config)) {
             startForwarding();
@@ -111,6 +115,9 @@ public class GnirehtetService extends VpnService {
 
     @SuppressWarnings("checkstyle:MagicNumber")
     private boolean setupVpn(VpnConfiguration config) {
+        // set the serial of the device received from the connection request
+        serial = config.getSerial();
+        Log.d(TAG, "Received serial: " + serial);
         Builder builder = new Builder();
         builder.addAddress(VPN_ADDRESS, 32);
         builder.setSession(getString(R.string.app_name));
@@ -139,7 +146,6 @@ public class GnirehtetService extends VpnService {
         // so switch to synchronous I/O to avoid polling
         builder.setBlocking(true);
         builder.setMtu(MTU);
-
         vpnInterface = builder.establish();
         if (vpnInterface == null) {
             Log.w(TAG, "VPN starting failed, please retry");

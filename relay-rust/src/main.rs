@@ -433,6 +433,9 @@ fn cmd_start(
     if let Some(routes) = routes {
         adb_args.append(&mut vec!["--esa", "routes", routes]);
     }
+    if let Some(serial) = serial {
+        adb_args.append(&mut vec!["--es", "serial", serial]);
+    }
     exec_adb(serial, adb_args)
 }
 
@@ -448,6 +451,7 @@ fn cmd_autostart(
         let routes = start_routes.as_ref().map(String::as_ref);
         async_start(Some(serial), dns_servers, routes, port)
     }));
+    cmd_relay(port);
     adb_monitor.monitor();
     Ok(())
 }

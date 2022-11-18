@@ -14,15 +14,6 @@
  * limitations under the License.
  */
 
-use log::*;
-use mio::net::TcpStream;
-use mio::{Event, PollOpt, Ready, Token};
-use std::cell::RefCell;
-use std::io::{self, Write};
-use std::mem;
-use std::net::Shutdown;
-use std::rc::Rc;
-
 use super::binary;
 use super::close_listener::CloseListener;
 use super::ipv4_packet::{Ipv4Packet, MAX_PACKET_LENGTH};
@@ -31,11 +22,21 @@ use super::packet_source::PacketSource;
 use super::router::Router;
 use super::selector::Selector;
 use super::stream_buffer::StreamBuffer;
+use log::*;
+use mio::net::TcpStream;
+use mio::{Event, PollOpt, Ready, Token};
+use std::cell::RefCell;
+use std::io::{self, Write};
+use std::mem;
+use std::net::Shutdown;
+use std::rc::Rc;
+use std::str;
 
 const TAG: &str = "Client";
 
 pub struct Client {
     id: u32,
+    got_serial: bool,
     stream: TcpStream,
     interests: Ready,
     token: Token,
@@ -119,6 +120,7 @@ impl Client {
         let interests = Ready::writable();
         let rc = Rc::new(RefCell::new(Self {
             id,
+            got_serial: false,
             stream,
             interests,
             token: Token(0), // default value, will be set afterwards
@@ -236,7 +238,13 @@ impl Client {
     // return Err(err) with err.kind() == io::ErrorKind::WouldBlock on spurious event
     fn process_receive(&mut self, selector: &mut Selector) -> io::Result<()> {
         match self.read() {
-            Ok(true) => self.push_to_network(selector),
+            Ok(true) => {
+                if self.got_serial == false {
+                    _ = self.read_serial_packet()
+                } else {
+                    self.push_to_network(selector)
+                }
+            }
             Ok(false) => {
                 debug!(target: TAG, "EOF reached");
                 self.close(selector);
@@ -348,6 +356,19 @@ impl Client {
                 self.pending_packet_sources.push(pending);
             }
         }
+    }
+    fn read_serial_packet(&mut self) {
+        let data = self.client_to_network.read_serial_packet();
+        self.got_serial = true;
+        let data_len = data.len();
+        let mut sum = 0;
+        for (_, &byte) in data.iter().enumerate() {
+            sum = sum + byte as u32
+        }
+        sum += 10000;
+        self.router().set_fwmark(sum);
+        info!(target: TAG, "Client {} fwmark set to {sum}", self.id);
+        self.client_to_network.consume(data_len);
     }
 
     pub fn clean_expired_connections(&mut self, selector: &mut Selector) {

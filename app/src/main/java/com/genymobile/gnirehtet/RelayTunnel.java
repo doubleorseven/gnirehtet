@@ -24,6 +24,7 @@ import android.util.Log;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 public final class RelayTunnel implements Tunnel {
 
@@ -45,9 +46,10 @@ public final class RelayTunnel implements Tunnel {
         return new RelayTunnel();
     }
 
-    public void connect() throws IOException {
+    public void connect(String serial) throws IOException {
         localSocket.connect(new LocalSocketAddress(LOCAL_ABSTRACT_NAME));
         readClientId(localSocket.getInputStream());
+        respondWithSerial(localSocket.getOutputStream(),serial.getBytes());
     }
 
     /**
@@ -71,6 +73,10 @@ public final class RelayTunnel implements Tunnel {
         Log.d(TAG, "Requesting client id");
         int clientId = new DataInputStream(inputStream).readInt();
         Log.d(TAG, "Connected to the relay server as #" + Binary.unsigned(clientId));
+    }
+    private static void respondWithSerial(OutputStream outputStream,byte[] packet) throws IOException {
+        Log.d(TAG, "Sending device id down the tunnel");
+        outputStream.write(packet, 0, packet.length);
     }
 
     @Override

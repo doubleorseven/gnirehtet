@@ -74,7 +74,7 @@ public class RelayTunnelProvider {
 
     private void connectTunnel(boolean notifyDisconnectedOnError) throws IOException {
         try {
-            tunnel.connect();
+            tunnel.connect(((GnirehtetService)this.vpnService).serial);
             notifyConnected();
         } catch (IOException e) {
             touchFailure();

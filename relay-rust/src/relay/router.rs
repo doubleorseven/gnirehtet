@@ -24,6 +24,7 @@ use super::client::{Client, ClientChannel};
 use super::connection::{Connection, ConnectionId};
 use super::ipv4_header::Protocol;
 use super::ipv4_packet::Ipv4Packet;
+use super::net::set_fwmark;
 use super::selector::Selector;
 use super::tcp_connection::TcpConnection;
 use super::udp_connection::UdpConnection;
@@ -34,6 +35,7 @@ pub struct Router {
     client: Weak<RefCell<Client>>,
     // there are typically only few connections per client, HashMap would be less efficient
     connections: Vec<Rc<RefCell<dyn Connection>>>,
+    fwmark: u32,
 }
 
 impl Router {
@@ -41,12 +43,16 @@ impl Router {
         Self {
             client: Weak::new(),
             connections: Vec::new(),
+            fwmark:0,
         }
     }
 
     // expose client initialization after construction to break cyclic initialization dependencies
     pub fn set_client(&mut self, client: Weak<RefCell<Client>>) {
         self.client = client;
+    }
+    pub fn set_fwmark(&mut self, fwmark: u32) {
+        self.fwmark = fwmark;
     }
 
     pub fn send_to_network(
@@ -104,7 +110,7 @@ impl Router {
             Some(index) => index,
             None => {
                 let connection =
-                    Self::create_connection(selector, id, self.client.clone(), ipv4_packet)?;
+                    Self::create_connection(selector, id, self.client.clone(), ipv4_packet,self.fwmark)?;
                 let index = self.connections.len();
                 self.connections.push(connection);
                 index
@@ -112,12 +118,13 @@ impl Router {
         };
         Ok(index)
     }
-
+    
     fn create_connection(
         selector: &mut Selector,
         id: ConnectionId,
         client: Weak<RefCell<Client>>,
         ipv4_packet: &Ipv4Packet,
+        fwmark: u32,
     ) -> io::Result<Rc<RefCell<dyn Connection>>> {
         let (ipv4_header, transport_header) = ipv4_packet.headers();
         let transport_header = transport_header.expect("No transport");
@@ -128,6 +135,7 @@ impl Router {
                 client,
                 ipv4_header,
                 transport_header,
+                fwmark,
             )?),
             Protocol::Udp => Ok(UdpConnection::create(
                 selector,
@@ -135,6 +143,7 @@ impl Router {
                 client,
                 ipv4_header,
                 transport_header,
+                fwmark,
             )?),
             p => Err(io::Error::new(
                 io::ErrorKind::Other,

@@ -22,7 +22,9 @@ use std::io;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::rc::{Rc, Weak};
 use std::time::Instant;
-
+use std::os::unix::prelude::IntoRawFd;
+use std::os::unix::io::AsRawFd;
+use super::net::set_fwmark;
 use super::binary;
 use super::client::{Client, ClientChannel};
 use super::connection::{Connection, ConnectionId};
@@ -57,9 +59,11 @@ impl UdpConnection {
         client: Weak<RefCell<Client>>,
         ipv4_header: Ipv4Header,
         transport_header: TransportHeader,
+        fwmark: u32,
     ) -> io::Result<Rc<RefCell<Self>>> {
         cx_info!(target: TAG, id, "Open");
-        let socket = Self::create_socket(&id)?;
+        let socket = Self::create_socket(&id, fwmark)?;
+        
         let packetizer = Packetizer::new(&ipv4_header, &transport_header);
         let interests = Ready::readable();
         let rc = Rc::new(RefCell::new(Self {
@@ -88,9 +92,10 @@ impl UdpConnection {
         Ok(rc)
     }
 
-    fn create_socket(id: &ConnectionId) -> io::Result<UdpSocket> {
+    fn create_socket(id: &ConnectionId, fwmark: u32) -> io::Result<UdpSocket> {
         let autobind_addr = SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0);
         let udp_socket = UdpSocket::bind(&autobind_addr)?;
+        set_fwmark(udp_socket.try_clone()?.as_raw_fd(),fwmark);
         udp_socket.connect(id.rewritten_destination().into())?;
         Ok(udp_socket)
     }

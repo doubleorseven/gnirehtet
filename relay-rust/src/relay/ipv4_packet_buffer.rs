@@ -21,7 +21,6 @@ use super::ipv4_packet::{Ipv4Packet, MAX_PACKET_LENGTH};
 
 use log::*;
 use std::io;
-
 pub struct Ipv4PacketBuffer {
     buf: ByteBuffer,
 }
@@ -63,6 +62,9 @@ impl Ipv4PacketBuffer {
             None
         }
     }
+    pub fn read_serial_packet(&mut self) -> Vec<u8> {
+            self.buf.peek_mut().to_owned()
+    }
 
     pub fn next(&mut self) {
         // remove the packet in front of the buffer
@@ -71,6 +73,10 @@ impl Ipv4PacketBuffer {
             .expect("next() called while there was no packet") as usize;
         self.buf.consume(length);
     }
+    pub fn consume(&mut self, length:usize) {
+        self.buf.consume(length);
+    }
+
 }
 
 #[cfg(test)]

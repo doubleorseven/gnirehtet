@@ -18,26 +18,31 @@ package com.genymobile.gnirehtet;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 public class VpnConfiguration implements Parcelable {
-
+    private static final String TAG = VpnConfiguration.class.getSimpleName();
     private final InetAddress[] dnsServers;
     private final CIDR[] routes;
+    private String serial = "";
 
     public VpnConfiguration() {
         this.dnsServers = new InetAddress[0];
         this.routes = new CIDR[0];
     }
 
-    public VpnConfiguration(InetAddress[] dnsServers, CIDR[] routes) {
+    public VpnConfiguration(InetAddress[] dnsServers, CIDR[] routes,String serial) {
         this.dnsServers = dnsServers;
         this.routes = routes;
+        this.serial = serial;
     }
 
     private VpnConfiguration(Parcel source) {
+        Log.i(TAG, "Received parcel: " + source.toString());
+
         int dnsCount = source.readInt();
         dnsServers = new InetAddress[dnsCount];
         try {
@@ -48,6 +53,7 @@ public class VpnConfiguration implements Parcelable {
             throw new AssertionError("Invalid address", e);
         }
         routes = source.createTypedArray(CIDR.CREATOR);
+        serial = source.readString();
     }
 
     public InetAddress[] getDnsServers() {
@@ -58,6 +64,9 @@ public class VpnConfiguration implements Parcelable {
         return routes;
     }
 
+    public String getSerial() { return serial; }
+
+
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(dnsServers.length);
@@ -65,6 +74,7 @@ public class VpnConfiguration implements Parcelable {
             dest.writeByteArray(addr.getAddress());
         }
         dest.writeTypedArray(routes, 0);
+        dest.writeString(serial);
     }
 
     @Override

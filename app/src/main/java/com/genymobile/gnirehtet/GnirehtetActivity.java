@@ -23,6 +23,7 @@ public class GnirehtetActivity extends Activity {
 
     public static final String EXTRA_DNS_SERVERS = "dnsServers";
     public static final String EXTRA_ROUTES = "routes";
+    public static final String EXTRA_SERIAL = "serial";
 
     private static final int VPN_REQUEST_CODE = 0;
 
@@ -59,7 +60,8 @@ public class GnirehtetActivity extends Activity {
         if (routes == null) {
             routes = new String[0];
         }
-        return new VpnConfiguration(Net.toInetAddresses(dnsServers), Net.toCIDRs(routes));
+        String serial = intent.getExtras().get(EXTRA_SERIAL).toString();
+        return new VpnConfiguration(Net.toInetAddresses(dnsServers), Net.toCIDRs(routes),serial);
     }
 
     private boolean startGnirehtet(VpnConfiguration config) {

@@ -17,13 +17,16 @@
 use log::*;
 use mio::net::TcpStream;
 use mio::{Event, PollOpt, Ready, Token};
+use std::net::{self, SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr};
+use net2::TcpBuilder;
 use rand::random;
 use std::cell::RefCell;
 use std::cmp;
 use std::io;
 use std::num::Wrapping;
 use std::rc::{Rc, Weak};
-
+use std::os::unix::io::AsRawFd;
+use super::net::set_fwmark;
 use super::binary;
 use super::client::{Client, ClientChannel};
 use super::connection::{Connection, ConnectionId};
@@ -138,10 +141,10 @@ impl TcpConnection {
         client: Weak<RefCell<Client>>,
         ipv4_header: Ipv4Header,
         transport_header: TransportHeader,
+        fwmark: u32,
     ) -> io::Result<Rc<RefCell<Self>>> {
-        cx_info!(target: TAG, id, "Open");
-        let stream = Self::create_stream(&id)?;
-
+        cx_debug!(target: TAG, id, "Open");
+        let stream = Self::create_stream(&id,fwmark)?;
         let tcp_header = Self::tcp_header_of_transport(transport_header);
 
         // shrink the TCP options to pass a minimal refrence header to the packetizer
@@ -177,7 +180,6 @@ impl TcpConnection {
             closed: false,
             tcb: Tcb::new(),
         }));
-
         {
             let mut self_ref = rc.borrow_mut();
 
@@ -195,8 +197,15 @@ impl TcpConnection {
         Ok(rc)
     }
 
-    fn create_stream(id: &ConnectionId) -> io::Result<TcpStream> {
-        TcpStream::connect(&id.rewritten_destination().into())
+    fn create_stream(id: &ConnectionId,fwmark:u32) -> io::Result<TcpStream> {
+        let addr = &id.rewritten_destination().into();
+        let sock = match *addr {
+            SocketAddr::V4(..) => TcpBuilder::new_v4(),
+            SocketAddr::V6(..) => TcpBuilder::new_v6(),
+        }?;
+        let stream = sock.to_tcp_stream()?;
+        set_fwmark(stream.try_clone()?.as_raw_fd(),fwmark);
+        TcpStream::connect_stream(stream, addr)
     }
 
     fn remove_from_router(&self) {
@@ -219,7 +228,7 @@ impl TcpConnection {
     // return Err(err) with err.kind() == io::ErrorKind::WouldBlock on spurious event
     fn process(&mut self, selector: &mut Selector, event: Event) -> io::Result<()> {
         if !self.closed {
-            let ready = event.readiness();
+            let ready: Ready = event.readiness();
             if ready.is_readable() || ready.is_writable() {
                 if ready.is_writable() {
                     if self.tcb.state == TcpState::SynSent {
