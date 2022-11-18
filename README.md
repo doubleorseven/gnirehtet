@@ -7,6 +7,7 @@ please understand the objectives and limitations of this fork:
 - you want to manipulate the routing of your android device(s)
 - you are using the rust relay (The java version was left unmodified), using the 'autostart' or 'autorun' command
 - you are running it from a linux machine
+- you can run this this as root
 - you are using the gnirehtet app compiled from the fork
 
 
