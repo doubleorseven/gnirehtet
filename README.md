@@ -1,7 +1,5 @@
-# Gnirehtet (v2.5)
 
-
-## THIS IS A SPECIFIC FORK OF GNIREHTET
+# THIS IS A SPECIFIC FORK OF GNIREHTET
 
 ### Before you start, make sure you want to run this fork
 
@@ -29,7 +27,7 @@ so you can setup a ip rule to forward all packets with FWMARK of 10730 to a tabl
 and setup a POSTROUTING action to change the source address to the wg address you've set up in the configuration.  
 
 
-
+# Gnirehtet (v2.5)
 
 
 This project provides **reverse tethering** over `adb` for Android: it
